@@ -1334,7 +1334,17 @@ impl SplitRenderer {
                             content_view_map.get(segment.start_char_offset + i)
                         {
                             let screen_x = i as u16;
-                            view_to_screen.entry(*view_idx).or_insert((screen_x, current_y));
+                            view_to_screen
+                                .entry(*view_idx)
+                                .or_insert_with(|| {
+                                    tracing::trace!(
+                                        "Mapping view {}; screen coord ({},{})",
+                                        view_idx,
+                                        screen_x,
+                                        current_y
+                                    );
+                                    (screen_x, current_y)
+                                });
                         }
                     }
 
@@ -1470,9 +1480,11 @@ impl SplitRenderer {
             let (x, y) = (cursor_screen_x, cursor_screen_y);
 
             tracing::trace!(
-                "Setting hardware cursor to PRIMARY cursor position: ({}, {})",
+                "Setting hardware cursor to PRIMARY cursor position: ({}, {}), view idx mapping {:?}, buffer pos {}",
                 x,
-                y
+                y,
+                view_to_screen.get(&primary_cursor_position),
+                state.cursors.primary().position
             );
 
             // Adjust for line numbers (gutter width is dynamic based on max line number)
