@@ -639,21 +639,19 @@ mod tests {
         assert!(is_unprintable_byte(0x02));
         assert!(is_unprintable_byte(0x08));
 
-        // Tab (0x09), LF (0x0A), VT (0x0B), FF (0x0C), CR (0x0D) are allowed
+        // Tab (0x09) and LF (0x0A) are allowed
         assert!(!is_unprintable_byte(0x09)); // tab
         assert!(!is_unprintable_byte(0x0A)); // newline
-        assert!(!is_unprintable_byte(0x0B)); // vertical tab
-        assert!(!is_unprintable_byte(0x0C)); // form feed
-        assert!(!is_unprintable_byte(0x0D)); // carriage return
 
-        // 0x0E-0x1A are unprintable (except ESC)
+        // VT (0x0B), FF (0x0C), CR (0x0D) are unprintable in binary mode
+        assert!(is_unprintable_byte(0x0B)); // vertical tab
+        assert!(is_unprintable_byte(0x0C)); // form feed
+        assert!(is_unprintable_byte(0x0D)); // carriage return
+
+        // 0x0E-0x1F are all unprintable (including ESC)
         assert!(is_unprintable_byte(0x0E));
         assert!(is_unprintable_byte(0x1A)); // SUB - this is in PNG headers
-
-        // ESC (0x1B) is allowed (for ANSI sequences)
-        assert!(!is_unprintable_byte(0x1B));
-
-        // 0x1C-0x1F are unprintable
+        assert!(is_unprintable_byte(0x1B)); // ESC
         assert!(is_unprintable_byte(0x1C));
         assert!(is_unprintable_byte(0x1F));
 
