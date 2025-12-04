@@ -242,6 +242,9 @@ pub enum PluginCommand {
     /// Set status message
     SetStatus { message: String },
 
+    /// Apply a theme by name
+    ApplyTheme { theme_name: String },
+
     /// Register a custom command
     RegisterCommand { command: Command },
 
@@ -311,6 +314,7 @@ pub enum PluginCommand {
         position: usize,
         text: String,
         color: (u8, u8, u8),
+        use_bg: bool, // true = use color as background, false = use as foreground
         before: bool, // true = before char, false = after char
     },
 
@@ -402,6 +406,13 @@ pub enum PluginCommand {
     StartPrompt {
         label: String,
         prompt_type: String, // e.g., "git-grep", "git-find-file"
+    },
+
+    /// Start a prompt with pre-filled initial value
+    StartPromptWithInitial {
+        label: String,
+        prompt_type: String,
+        initial_value: String,
     },
 
     /// Update the suggestions list for the current prompt

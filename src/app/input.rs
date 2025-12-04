@@ -3573,13 +3573,13 @@ impl Editor {
         // Find the index of the current theme
         let current_index = available_themes
             .iter()
-            .position(|name| *name == current_theme_name)
+            .position(|name| name == current_theme_name)
             .unwrap_or(0);
 
         let suggestions: Vec<crate::input::commands::Suggestion> = available_themes
             .iter()
             .map(|theme_name| {
-                let is_current = *theme_name == current_theme_name;
+                let is_current = theme_name == current_theme_name;
                 crate::input::commands::Suggestion {
                     text: theme_name.to_string(),
                     description: if is_current {
@@ -3611,11 +3611,41 @@ impl Editor {
         }
     }
 
-    /// Apply a theme by name
-    fn apply_theme(&mut self, theme_name: &str) {
+    /// Apply a theme by name and persist it to config
+    pub(super) fn apply_theme(&mut self, theme_name: &str) {
         if !theme_name.is_empty() {
             self.theme = crate::view::theme::Theme::from_name(theme_name);
+
+            // Update the config in memory
+            self.config.theme = self.theme.name.clone();
+
+            // Persist to config file
+            self.save_theme_to_config();
+
             self.set_status_message(format!("Theme changed to '{}'", self.theme.name));
+        }
+    }
+
+    /// Save the current theme setting to the user's config file
+    fn save_theme_to_config(&mut self) {
+        // Find the config path
+        let config_dir = if let Some(config) = dirs::config_dir() {
+            config.join("fresh")
+        } else {
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+        };
+
+        let config_path = config_dir.join("config.json");
+
+        // Create the directory if it doesn't exist
+        if let Err(e) = std::fs::create_dir_all(&config_dir) {
+            tracing::warn!("Failed to create config directory: {}", e);
+            return;
+        }
+
+        // Save the config
+        if let Err(e) = self.config.save_to_file(&config_path) {
+            tracing::warn!("Failed to save theme to config: {}", e);
         }
     }
 

@@ -1784,6 +1784,39 @@ impl TextBuffer {
         end
     }
 
+    /// Check if a byte is a UTF-8 continuation byte (not at a char boundary)
+    /// UTF-8 continuation bytes have the pattern 10xxxxxx (0x80-0xBF)
+    /// This is the same check that str::is_char_boundary uses internally.
+    #[inline]
+    fn is_utf8_continuation_byte(byte: u8) -> bool {
+        (byte & 0b1100_0000) == 0b1000_0000
+    }
+
+    /// Snap position to a valid UTF-8 character boundary
+    /// If already at a boundary, returns the same position.
+    /// Otherwise, moves to the previous valid boundary.
+    pub fn snap_to_char_boundary(&self, pos: usize) -> usize {
+        let len = self.len();
+        if pos == 0 || pos >= len {
+            return pos.min(len);
+        }
+
+        // Get the byte at pos to check if we're at a character boundary
+        let Some(bytes) = self.get_text_range(pos, 1) else {
+            // Data unloaded, return pos as fallback
+            return pos;
+        };
+
+        // A position is at a char boundary if the byte there is NOT a continuation byte
+        if !Self::is_utf8_continuation_byte(bytes[0]) {
+            // Already at a character boundary
+            return pos;
+        }
+
+        // Not at a boundary, find the previous one
+        self.prev_char_boundary(pos)
+    }
+
     /// Find the previous word boundary
     pub fn prev_word_boundary(&self, pos: usize) -> usize {
         if pos == 0 {

@@ -396,6 +396,14 @@ interface EditorAPI {
 
   // === Buffer Mutations ===
   /**
+   * Apply a theme by name
+   *
+   * Loads and applies the specified theme immediately. The theme can be a built-in
+   * theme name or a custom theme from the themes directory.
+   * @param theme_name - Name of the theme to apply (e.g., "dark", "light", "my-custom-theme")
+   */
+  applyTheme(theme_name: string): void;
+  /**
    * Copy text to the system clipboard
    *
    * Copies the provided text to both the internal and system clipboard.
@@ -571,6 +579,14 @@ interface EditorAPI {
    */
   killProcess(#[bigint] process_id: number): Promise<boolean>;
   /**
+   * Start a prompt with pre-filled initial value
+   * @param label - Label to display (e.g., "Git grep: ")
+   * @param prompt_type - Type identifier (e.g., "git-grep")
+   * @param initial_value - Initial text to pre-fill in the prompt
+   * @returns true if prompt was started successfully
+   */
+  startPromptWithInitial(label: string, prompt_type: string, initial_value: string): boolean;
+  /**
    * Send an arbitrary LSP request and receive the raw JSON response
    * @param language - Language ID (e.g., "cpp")
    * @param method - Full LSP method (e.g., "textDocument/switchSourceHeader")
@@ -669,9 +685,10 @@ interface EditorAPI {
    * @param g - Green color component (0-255)
    * @param b - Blue color component (0-255)
    * @param before - Whether to insert before (true) or after (false) the position
+   * @param use_bg - Whether to use the color as background (true) or foreground (false)
    * @returns true if virtual text was added
    */
-  addVirtualText(buffer_id: number, virtual_text_id: string, position: number, text: string, r: number, g: number, b: number, before: boolean): boolean;
+  addVirtualText(buffer_id: number, virtual_text_id: string, position: number, text: string, r: number, g: number, b: number, before: boolean, use_bg: boolean): boolean;
   /**
    * Remove virtual text by ID
    * @param buffer_id - The buffer ID

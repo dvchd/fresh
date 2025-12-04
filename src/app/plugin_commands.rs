@@ -120,6 +120,7 @@ impl Editor {
         position: usize,
         text: String,
         color: (u8, u8, u8),
+        use_bg: bool,
         before: bool,
     ) {
         if let Some(state) = self.buffers.get_mut(&buffer_id) {
@@ -132,7 +133,13 @@ impl Editor {
                 VirtualTextPosition::AfterChar
             };
 
-            let style = Style::default().fg(Color::Rgb(color.0, color.1, color.2));
+            let style = if use_bg {
+                // For background colors, use the color as background with a space character
+                Style::default().bg(Color::Rgb(color.0, color.1, color.2))
+            } else {
+                // For foreground colors, use the color as foreground
+                Style::default().fg(Color::Rgb(color.0, color.1, color.2))
+            };
 
             // Remove any existing virtual text with this ID first
             state
@@ -871,6 +878,35 @@ impl Editor {
         let hook_args = HookArgs::PromptChanged {
             prompt_type: prompt_type.clone(),
             input: String::new(),
+        };
+
+        if let Some(ref ts_manager) = self.ts_plugin_manager {
+            ts_manager.run_hook("prompt_changed", hook_args);
+        }
+    }
+
+    /// Handle StartPromptWithInitial command
+    pub(super) fn handle_start_prompt_with_initial(
+        &mut self,
+        label: String,
+        prompt_type: String,
+        initial_value: String,
+    ) {
+        // Create a plugin-controlled prompt with initial text
+        use crate::view::prompt::{Prompt, PromptType};
+        self.prompt = Some(Prompt::with_initial_text(
+            label,
+            PromptType::Plugin {
+                custom_type: prompt_type.clone(),
+            },
+            initial_value.clone(),
+        ));
+
+        // Fire the prompt_changed hook immediately with the initial value
+        use crate::services::plugins::hooks::HookArgs;
+        let hook_args = HookArgs::PromptChanged {
+            prompt_type: prompt_type.clone(),
+            input: initial_value,
         };
 
         if let Some(ref ts_manager) = self.ts_plugin_manager {

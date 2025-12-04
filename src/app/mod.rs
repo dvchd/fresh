@@ -1198,8 +1198,8 @@ impl Editor {
         // Preserve cursor position (clamped to new content length and snapped to char boundary)
         let new_len = state.buffer.len();
         let clamped_pos = old_cursor_pos.min(new_len);
-        // Ensure cursor is at a valid UTF-8 character boundary
-        let new_cursor_pos = state.buffer.prev_char_boundary(clamped_pos);
+        // Ensure cursor is at a valid UTF-8 character boundary (without moving if already valid)
+        let new_cursor_pos = state.buffer.snap_to_char_boundary(clamped_pos);
         state.cursors.primary_mut().position = new_cursor_pos;
         state.cursors.primary_mut().anchor = None;
 
@@ -4376,6 +4376,7 @@ impl Editor {
                 position,
                 text,
                 color,
+                use_bg,
                 before,
             } => {
                 self.handle_add_virtual_text(
@@ -4384,6 +4385,7 @@ impl Editor {
                     position,
                     text,
                     color,
+                    use_bg,
                     before,
                 );
             }
@@ -4516,8 +4518,18 @@ impl Editor {
             PluginCommand::SetStatus { message } => {
                 self.handle_set_status(message);
             }
+            PluginCommand::ApplyTheme { theme_name } => {
+                self.apply_theme(&theme_name);
+            }
             PluginCommand::StartPrompt { label, prompt_type } => {
                 self.handle_start_prompt(label, prompt_type);
+            }
+            PluginCommand::StartPromptWithInitial {
+                label,
+                prompt_type,
+                initial_value,
+            } => {
+                self.handle_start_prompt_with_initial(label, prompt_type, initial_value);
             }
             PluginCommand::SetPromptSuggestions { suggestions } => {
                 self.handle_set_prompt_suggestions(suggestions);

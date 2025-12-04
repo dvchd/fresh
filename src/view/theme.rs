@@ -451,12 +451,21 @@ impl Theme {
 
     /// Load builtin theme from the themes directory
     fn load_builtin_theme(name: &str) -> Option<Self> {
-        // Try to load from the themes directory in the project root
-        let theme_paths = [
+        // Build list of paths to search
+        let mut theme_paths = vec![
             format!("themes/{}.json", name),
             format!("../themes/{}.json", name),
             format!("../../themes/{}.json", name),
         ];
+
+        // Also check user config themes directory
+        if let Some(config_dir) = dirs::config_dir() {
+            let user_theme_path = config_dir
+                .join("fresh")
+                .join("themes")
+                .join(format!("{}.json", name));
+            theme_paths.insert(0, user_theme_path.to_string_lossy().to_string());
+        }
 
         for path in &theme_paths {
             if let Ok(theme) = Self::from_file(path) {
@@ -805,9 +814,35 @@ impl Theme {
         }
     }
 
-    /// Get all available theme names
-    pub fn available_themes() -> Vec<&'static str> {
-        vec!["dark", "light", "high-contrast", "nostalgia"]
+    /// Get all available theme names (builtin + user themes)
+    pub fn available_themes() -> Vec<String> {
+        let mut themes: Vec<String> = vec![
+            "dark".to_string(),
+            "light".to_string(),
+            "high-contrast".to_string(),
+            "nostalgia".to_string(),
+        ];
+
+        // Scan user themes directory
+        if let Some(config_dir) = dirs::config_dir() {
+            let user_themes_dir = config_dir.join("fresh").join("themes");
+            if let Ok(entries) = std::fs::read_dir(&user_themes_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().is_some_and(|ext| ext == "json") {
+                        if let Some(stem) = path.file_stem() {
+                            let name = stem.to_string_lossy().to_string();
+                            // Avoid duplicates (user theme overriding builtin)
+                            if !themes.iter().any(|t| t == &name) {
+                                themes.push(name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        themes
     }
 
     /// Nostalgia theme (Turbo Pascal 5 / WordPerfect 5 inspired)
@@ -954,11 +989,12 @@ mod tests {
     #[test]
     fn test_available_themes() {
         let themes = Theme::available_themes();
-        assert_eq!(themes.len(), 4);
-        assert!(themes.contains(&"dark"));
-        assert!(themes.contains(&"light"));
-        assert!(themes.contains(&"high-contrast"));
-        assert!(themes.contains(&"nostalgia"));
+        // At minimum, should have the 4 builtin themes
+        assert!(themes.len() >= 4);
+        assert!(themes.contains(&"dark".to_string()));
+        assert!(themes.contains(&"light".to_string()));
+        assert!(themes.contains(&"high-contrast".to_string()));
+        assert!(themes.contains(&"nostalgia".to_string()));
     }
 
     #[test]

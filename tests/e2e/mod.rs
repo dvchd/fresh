@@ -49,6 +49,7 @@ pub mod tab_scrolling;
 pub mod terminal_resize;
 pub mod test_scrollbar_keybinds_cursor;
 pub mod theme;
+pub mod theme_editor;
 pub mod undo_redo;
 pub mod unicode_cursor;
 pub mod virtual_lines;

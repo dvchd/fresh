@@ -567,6 +567,22 @@ setPromptSuggestions(suggestions: PromptSuggestion[]): boolean
 
 ### Buffer Mutations
 
+#### `applyTheme`
+
+Apply a theme by name
+Loads and applies the specified theme immediately. The theme can be a built-in
+theme name or a custom theme from the themes directory.
+
+```typescript
+applyTheme(theme_name: string): void
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `theme_name` | `string` | Name of the theme to apply (e.g., "dark", "light", "my-custom-theme") |
+
 #### `setClipboard`
 
 Copy text to the system clipboard
@@ -890,6 +906,22 @@ killProcess(#[bigint] process_id: number): Promise<boolean>
 |------|------|-------------|
 | `#[bigint] process_id` | `number` | - |
 
+#### `startPromptWithInitial`
+
+Start a prompt with pre-filled initial value
+
+```typescript
+startPromptWithInitial(label: string, prompt_type: string, initial_value: string): boolean
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `label` | `string` | Label to display (e.g., "Git grep: ") |
+| `prompt_type` | `string` | Type identifier (e.g., "git-grep") |
+| `initial_value` | `string` | Initial text to pre-fill in the prompt |
+
 #### `sendLspRequest`
 
 Send an arbitrary LSP request and receive the raw JSON response
@@ -1058,7 +1090,7 @@ clearAllOverlays(buffer_id: number): boolean
 Add virtual text (inline decoration) at a position
 
 ```typescript
-addVirtualText(buffer_id: number, virtual_text_id: string, position: number, text: string, r: number, g: number, b: number, before: boolean): boolean
+addVirtualText(buffer_id: number, virtual_text_id: string, position: number, text: string, r: number, g: number, b: number, before: boolean, use_bg: boolean): boolean
 ```
 
 **Parameters:**
@@ -1073,6 +1105,7 @@ addVirtualText(buffer_id: number, virtual_text_id: string, position: number, tex
 | `g` | `number` | Green color component (0-255) |
 | `b` | `number` | uffer_id - The buffer ID |
 | `before` | `boolean` | Whether to insert before (true) or after (false) the position |
+| `use_bg` | `boolean` | Whether to use the color as background (true) or foreground (false) |
 
 #### `removeVirtualText`
 

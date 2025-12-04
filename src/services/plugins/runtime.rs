@@ -178,6 +178,24 @@ fn op_fresh_set_status(state: &mut OpState, #[string] message: String) {
     tracing::info!("TypeScript plugin set_status: {}", message);
 }
 
+/// Apply a theme by name
+///
+/// Loads and applies the specified theme immediately. The theme can be a built-in
+/// theme name or a custom theme from the themes directory.
+/// @param theme_name - Name of the theme to apply (e.g., "dark", "light", "my-custom-theme")
+#[op2(fast)]
+fn op_fresh_apply_theme(state: &mut OpState, #[string] theme_name: String) {
+    if let Some(runtime_state) = state.try_borrow::<Rc<RefCell<TsRuntimeState>>>() {
+        let runtime_state = runtime_state.borrow();
+        let _ = runtime_state
+            .command_sender
+            .send(PluginCommand::ApplyTheme {
+                theme_name: theme_name.clone(),
+            });
+    }
+    tracing::info!("TypeScript plugin apply_theme: {}", theme_name);
+}
+
 /// Log a debug message to the editor's trace output
 ///
 /// Messages appear in stderr when running with RUST_LOG=debug.
@@ -515,6 +533,7 @@ fn op_fresh_clear_all_overlays(state: &mut OpState, buffer_id: u32) -> bool {
 /// @param g - Green color component (0-255)
 /// @param b - Blue color component (0-255)
 /// @param before - Whether to insert before (true) or after (false) the position
+/// @param use_bg - Whether to use the color as background (true) or foreground (false)
 /// @returns true if virtual text was added
 #[op2(fast)]
 #[allow(clippy::too_many_arguments)]
@@ -528,6 +547,7 @@ fn op_fresh_add_virtual_text(
     g: u8,
     b: u8,
     before: bool,
+    use_bg: bool,
 ) -> bool {
     if let Some(runtime_state) = state.try_borrow::<Rc<RefCell<TsRuntimeState>>>() {
         let runtime_state = runtime_state.borrow();
@@ -539,6 +559,7 @@ fn op_fresh_add_virtual_text(
                 position: position as usize,
                 text,
                 color: (r, g, b),
+                use_bg,
                 before,
             });
         return result.is_ok();
@@ -1668,6 +1689,32 @@ fn op_fresh_start_prompt(
     false
 }
 
+/// Start a prompt with pre-filled initial value
+/// @param label - Label to display (e.g., "Git grep: ")
+/// @param prompt_type - Type identifier (e.g., "git-grep")
+/// @param initial_value - Initial text to pre-fill in the prompt
+/// @returns true if prompt was started successfully
+#[op2(fast)]
+fn op_fresh_start_prompt_with_initial(
+    state: &mut OpState,
+    #[string] label: String,
+    #[string] prompt_type: String,
+    #[string] initial_value: String,
+) -> bool {
+    if let Some(runtime_state) = state.try_borrow::<Rc<RefCell<TsRuntimeState>>>() {
+        let runtime_state = runtime_state.borrow();
+        let result = runtime_state
+            .command_sender
+            .send(PluginCommand::StartPromptWithInitial {
+                label,
+                prompt_type,
+                initial_value,
+            });
+        return result.is_ok();
+    }
+    false
+}
+
 /// Set suggestions for the current prompt
 /// @param suggestions - Array of suggestions to display
 /// @returns true if suggestions were set successfully
@@ -2625,6 +2672,7 @@ extension!(
     fresh_runtime,
     ops = [
         op_fresh_set_status,
+        op_fresh_apply_theme,
         op_fresh_debug,
         op_fresh_set_clipboard,
         op_fresh_get_active_buffer_id,
@@ -2671,6 +2719,7 @@ extension!(
         op_fresh_get_all_cursors,
         op_fresh_get_viewport,
         op_fresh_start_prompt,
+        op_fresh_start_prompt_with_initial,
         op_fresh_set_prompt_suggestions,
         op_fresh_read_file,
         op_fresh_write_file,
@@ -2786,6 +2835,11 @@ impl TypeScriptRuntime {
                         core.ops.op_fresh_debug(message);
                     },
 
+                    // Theme operations
+                    applyTheme(themeName) {
+                        return core.ops.op_fresh_apply_theme(themeName);
+                    },
+
                     // Clipboard
                     copyToClipboard(text) {
                         core.ops.op_fresh_set_clipboard(text);
@@ -2844,8 +2898,8 @@ impl TypeScriptRuntime {
                     },
 
                     // Virtual text (inline text that doesn't exist in buffer)
-                    addVirtualText(bufferId, virtualTextId, position, text, r, g, b, before) {
-                        return core.ops.op_fresh_add_virtual_text(bufferId, virtualTextId, position, text, r, g, b, before);
+                    addVirtualText(bufferId, virtualTextId, position, text, r, g, b, before, useBg = false) {
+                        return core.ops.op_fresh_add_virtual_text(bufferId, virtualTextId, position, text, r, g, b, before, useBg);
                     },
                     removeVirtualText(bufferId, virtualTextId) {
                         return core.ops.op_fresh_remove_virtual_text(bufferId, virtualTextId);
@@ -2947,6 +3001,9 @@ impl TypeScriptRuntime {
                     // Prompt operations
                     startPrompt(label, promptType) {
                         return core.ops.op_fresh_start_prompt(label, promptType);
+                    },
+                    startPromptWithInitial(label, promptType, initialValue) {
+                        return core.ops.op_fresh_start_prompt_with_initial(label, promptType, initialValue);
                     },
                     setPromptSuggestions(suggestions) {
                         return core.ops.op_fresh_set_prompt_suggestions(suggestions);
