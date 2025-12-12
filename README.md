@@ -138,3 +138,7 @@ cargo build --release
 Copyright (c) Noam Lewis
 
 This project is licensed under the GNU General Public License v2.0 (GPL-2.0).
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sinelaw/fresh&type=date&legend=top-left)](https://www.star-history.com/#sinelaw/fresh&type=date&legend=top-left)
