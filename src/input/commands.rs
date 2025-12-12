@@ -135,6 +135,14 @@ pub fn get_all_commands() -> Vec<Command> {
             source: CommandSource::Builtin,
         },
         Command {
+            name: "Switch Project".to_string(),
+            description: "Switch to a different project folder".to_string(),
+            action: Action::SwitchProject,
+            contexts: vec![],
+            custom_contexts: vec![],
+            source: CommandSource::Builtin,
+        },
+        Command {
             name: "Save File".to_string(),
             description: "Save the current buffer to disk".to_string(),
             action: Action::Save,
@@ -951,27 +959,11 @@ pub fn get_all_commands() -> Vec<Command> {
             custom_contexts: vec![],
             source: CommandSource::Builtin,
         },
-        // Keybinding map switching
+        // Keybinding map selection
         Command {
-            name: "Switch to Default Keybindings".to_string(),
-            description: "Switch to the default keybinding map".to_string(),
-            action: Action::SwitchKeybindingMap("default".to_string()),
-            contexts: vec![],
-            custom_contexts: vec![],
-            source: CommandSource::Builtin,
-        },
-        Command {
-            name: "Switch to Emacs Keybindings".to_string(),
-            description: "Switch to Emacs-style keybindings".to_string(),
-            action: Action::SwitchKeybindingMap("emacs".to_string()),
-            contexts: vec![],
-            custom_contexts: vec![],
-            source: CommandSource::Builtin,
-        },
-        Command {
-            name: "Switch to VSCode Keybindings".to_string(),
-            description: "Switch to VSCode-style keybindings".to_string(),
-            action: Action::SwitchKeybindingMap("vscode".to_string()),
+            name: "Select Keybinding Map".to_string(),
+            description: "Choose a keybinding map (default, emacs, vscode)".to_string(),
+            action: Action::SelectKeybindingMap,
             contexts: vec![],
             custom_contexts: vec![],
             source: CommandSource::Builtin,

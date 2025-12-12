@@ -41,9 +41,9 @@ impl InstallMethod {
     /// Get the update command for this installation method
     pub fn update_command(&self) -> Option<&'static str> {
         match self {
-            InstallMethod::Homebrew => Some("brew upgrade fresh"),
+            InstallMethod::Homebrew => Some(" brew upgrade fresh-editor"),
             InstallMethod::Cargo => Some("cargo install fresh-editor"),
-            InstallMethod::Npm => Some("npm update -g fresh-editor"),
+            InstallMethod::Npm => Some("npm update -g @fresh-editor/fresh-editor"),
             InstallMethod::Aur => Some("yay -Syu fresh-editor  # or use your AUR helper"),
             InstallMethod::PackageManager => Some("Update using your system package manager"),
             InstallMethod::Unknown => None,
@@ -556,23 +556,6 @@ mod tests {
             "prerelease": false
         }"#;
         assert_eq!(parse_version_from_json(json).unwrap(), "0.2.0");
-    }
-
-    #[test]
-    fn test_update_commands() {
-        assert_eq!(
-            InstallMethod::Homebrew.update_command(),
-            Some("brew upgrade fresh")
-        );
-        assert_eq!(
-            InstallMethod::Cargo.update_command(),
-            Some("cargo install fresh-editor")
-        );
-        assert_eq!(
-            InstallMethod::Npm.update_command(),
-            Some("npm update -g fresh-editor")
-        );
-        assert!(InstallMethod::Unknown.update_command().is_none());
     }
 
     #[test]

@@ -143,6 +143,10 @@ pub struct Editor {
     /// Should the editor quit?
     should_quit: bool,
 
+    /// If set, the editor should restart with this new working directory
+    /// This is used by Open Folder to do a clean context switch
+    restart_with_dir: Option<PathBuf>,
+
     /// Status message (shown in status bar)
     status_message: Option<String>,
 
@@ -435,6 +439,9 @@ pub struct Editor {
     /// When leaving a terminal while in terminal mode, its ID is added here.
     /// When switching to a terminal in this set, terminal mode is automatically re-entered.
     terminal_mode_resume: std::collections::HashSet<BufferId>,
+
+    /// Timestamp of the previous mouse click (for double-click detection)
+    previous_click_time: Option<std::time::Instant>,
 }
 
 impl Editor {
@@ -682,6 +689,7 @@ impl Editor {
             keybindings,
             clipboard: crate::services::clipboard::Clipboard::new(),
             should_quit: false,
+            restart_with_dir: None,
             status_message: None,
             plugin_status_message: None,
             prompt: None,
@@ -803,6 +811,7 @@ impl Editor {
             terminal_mode: false,
             keyboard_capture: false,
             terminal_mode_resume: std::collections::HashSet::new(),
+            previous_click_time: None,
         })
     }
 
@@ -1641,8 +1650,9 @@ impl Editor {
 
     /// Internal helper to close a buffer (shared by close_buffer and force_close_buffer)
     fn close_buffer_internal(&mut self, id: BufferId) -> io::Result<()> {
-        // If it's the last buffer, create a new anonymous buffer first
-        let replacement_buffer = if self.buffers.len() == 1 {
+        // If it's the last buffer, create a new empty buffer and focus file explorer
+        let is_last_buffer = self.buffers.len() == 1;
+        let replacement_buffer = if is_last_buffer {
             self.new_buffer()
         } else {
             // Find a replacement buffer (any buffer that's not the one being closed)
@@ -1674,6 +1684,11 @@ impl Editor {
         // Switch to another buffer if we closed the active one
         if self.active_buffer() == id {
             self.set_active_buffer(replacement_buffer);
+        }
+
+        // If this was the last buffer, focus file explorer
+        if is_last_buffer {
+            self.focus_file_explorer();
         }
 
         Ok(())
@@ -1741,8 +1756,8 @@ impl Editor {
         } else {
             // There are other viewports of this buffer - just remove from current split's tabs
             if current_split_tabs.len() <= 1 {
-                // This is the only tab in this split - can't close it
-                self.set_status_message("Cannot close the only tab in this split".to_string());
+                // This is the only tab in this split - close the split
+                self.close_active_split();
                 return;
             }
 
@@ -1815,9 +1830,9 @@ impl Editor {
         } else {
             // There are other viewports of this buffer - just remove from this split's tabs
             if split_tabs.len() <= 1 {
-                // This is the only tab in this split - can't close it
-                self.set_status_message("Cannot close the only tab in this split".to_string());
-                return false;
+                // This is the only tab in this split - close the split
+                self.handle_close_split(split_id);
+                return true;
             }
 
             // Find replacement buffer for this split
@@ -3810,6 +3825,29 @@ impl Editor {
         self.should_quit
     }
 
+    /// Check if the editor should restart with a new working directory
+    pub fn should_restart(&self) -> bool {
+        self.restart_with_dir.is_some()
+    }
+
+    /// Take the restart directory, clearing the restart request
+    /// Returns the new working directory if a restart was requested
+    pub fn take_restart_dir(&mut self) -> Option<PathBuf> {
+        self.restart_with_dir.take()
+    }
+
+    /// Request the editor to restart with a new working directory
+    /// This triggers a clean shutdown and restart with the new project root
+    pub fn request_restart(&mut self, new_working_dir: PathBuf) {
+        tracing::info!(
+            "Restart requested with new working directory: {}",
+            new_working_dir.display()
+        );
+        self.restart_with_dir = Some(new_working_dir);
+        // Also signal quit so the event loop exits
+        self.should_quit = true;
+    }
+
     /// Get the active theme
     pub fn theme(&self) -> &crate::view::theme::Theme {
         &self.theme
@@ -4223,7 +4261,10 @@ impl Editor {
         // Check if we need to update suggestions after creating the prompt
         let needs_suggestions = matches!(
             prompt_type,
-            PromptType::OpenFile | PromptType::SaveFileAs | PromptType::Command
+            PromptType::OpenFile
+                | PromptType::SwitchProject
+                | PromptType::SaveFileAs
+                | PromptType::Command
         );
 
         self.prompt = Some(Prompt::with_suggestions(message, prompt_type, suggestions));
@@ -4331,6 +4372,39 @@ impl Editor {
         self.load_file_open_directory(initial_dir);
     }
 
+    /// Initialize the folder open dialog state
+    ///
+    /// Called when the Switch Project prompt is started. Starts from the current working
+    /// directory and triggers async directory loading.
+    fn init_folder_open_state(&mut self) {
+        // Start from the current working directory
+        let initial_dir = self.working_dir.clone();
+
+        // Create the file open state
+        self.file_open_state = Some(file_open::FileOpenState::new(initial_dir.clone()));
+
+        // Start async directory loading
+        self.load_file_open_directory(initial_dir);
+    }
+
+    /// Change the working directory to a new path
+    ///
+    /// This requests a full editor restart with the new working directory.
+    /// The main loop will drop the current editor instance and create a fresh
+    /// one pointing to the new directory. This ensures:
+    /// - All buffers are cleanly closed
+    /// - LSP servers are properly shut down and restarted with new root
+    /// - Plugins are cleanly restarted
+    /// - No state leaks between projects
+    pub fn change_working_dir(&mut self, new_path: PathBuf) {
+        // Canonicalize the path to resolve symlinks and normalize
+        let new_path = new_path.canonicalize().unwrap_or(new_path);
+
+        // Request a restart with the new working directory
+        // The main loop will handle creating a fresh editor instance
+        self.request_restart(new_path);
+    }
+
     /// Load directory contents for the file open dialog
     fn load_file_open_directory(&mut self, path: PathBuf) {
         // Update state to loading
@@ -4420,7 +4494,7 @@ impl Editor {
                     };
                     self.apply_event_to_active_buffer(&remove_overlay_event);
                 }
-                PromptType::OpenFile => {
+                PromptType::OpenFile | PromptType::SwitchProject => {
                     // Clear file browser state
                     self.file_open_state = None;
                     self.file_browser_layout = None;
@@ -4446,6 +4520,7 @@ impl Editor {
                 prompt.prompt_type,
                 PromptType::Command
                     | PromptType::OpenFile
+                    | PromptType::SwitchProject
                     | PromptType::SaveFileAs
                     | PromptType::StopLspServer
                     | PromptType::SelectTheme
@@ -4586,8 +4661,8 @@ impl Editor {
                 // Update incremental search highlights as user types
                 self.update_search_highlights(&input);
             }
-            PromptType::OpenFile => {
-                // For OpenFile, update the file browser filter (native implementation)
+            PromptType::OpenFile | PromptType::SwitchProject => {
+                // For OpenFile/SwitchProject, update the file browser filter (native implementation)
                 self.update_file_open_filter();
             }
             PromptType::SaveFileAs => {
@@ -5113,12 +5188,11 @@ impl Editor {
 
             // Update user config (raw file contents, not merged with defaults)
             // This allows plugins to distinguish between user-set and default values
-            if let Some(config_path) = Config::default_config_path() {
-                if config_path.exists() {
-                    if let Ok(contents) = std::fs::read_to_string(&config_path) {
-                        snapshot.user_config = serde_json::from_str(&contents)
-                            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
-                    }
+            for config_path in Config::default_config_paths() {
+                if let Ok(contents) = std::fs::read_to_string(config_path) {
+                    snapshot.user_config = serde_json::from_str(&contents)
+                        .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+                    break;
                 }
             }
         }

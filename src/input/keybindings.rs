@@ -276,6 +276,7 @@ pub enum Action {
     Save,
     SaveAs,
     Open,
+    SwitchProject,
     New,
     Close,
     CloseTab,
@@ -336,6 +337,7 @@ pub enum Action {
     ToggleComposeMode,
     SetComposeWidth,
     SelectTheme,
+    SelectKeybindingMap,
 
     // Buffer/tab navigation
     NextBuffer,
@@ -551,6 +553,7 @@ impl Action {
             "save" => Some(Action::Save),
             "save_as" => Some(Action::SaveAs),
             "open" => Some(Action::Open),
+            "switch_project" => Some(Action::SwitchProject),
             "new" => Some(Action::New),
             "close" => Some(Action::Close),
             "close_tab" => Some(Action::CloseTab),
@@ -723,6 +726,7 @@ impl Action {
             "set_background" => Some(Action::SetBackground),
             "set_background_blend" => Some(Action::SetBackgroundBlend),
             "select_theme" => Some(Action::SelectTheme),
+            "select_keybinding_map" => Some(Action::SelectKeybindingMap),
 
             "dump_config" => Some(Action::DumpConfig),
 
@@ -1508,6 +1512,7 @@ impl KeybindingResolver {
             Action::Save => "Save file".to_string(),
             Action::SaveAs => "Save file as...".to_string(),
             Action::Open => "Open file".to_string(),
+            Action::SwitchProject => "Switch project".to_string(),
             Action::New => "New file".to_string(),
             Action::Close => "Close file".to_string(),
             Action::CloseTab => "Close tab".to_string(),
@@ -1653,6 +1658,7 @@ impl KeybindingResolver {
             Action::ScrollTabsLeft => "Scroll tabs left".to_string(),
             Action::ScrollTabsRight => "Scroll tabs right".to_string(),
             Action::SelectTheme => "Select theme".to_string(),
+            Action::SelectKeybindingMap => "Select keybinding map".to_string(),
             Action::SwitchToPreviousTab => "Switch to previous tab".to_string(),
             Action::SwitchToTabByName => "Switch to tab by name".to_string(),
             Action::OpenTerminal => "Open terminal".to_string(),

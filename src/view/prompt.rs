@@ -10,6 +10,8 @@ use crate::primitives::word_navigation::{
 pub enum PromptType {
     /// Open a file
     OpenFile,
+    /// Switch to a different project folder (change working directory)
+    SwitchProject,
     /// Save current buffer to a new file
     SaveFileAs,
     /// Search for text in buffer
@@ -57,6 +59,8 @@ pub enum PromptType {
     StopLspServer,
     /// Select a theme (select from list)
     SelectTheme,
+    /// Select a keybinding map (select from list)
+    SelectKeybindingMap,
     /// Confirm reverting a modified file
     ConfirmRevert,
     /// Confirm saving over a file that changed on disk

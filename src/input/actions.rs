@@ -1592,6 +1592,7 @@ pub fn action_to_events(
         | Action::Save
         | Action::SaveAs
         | Action::Open
+        | Action::SwitchProject
         | Action::New
         | Action::Close
         | Action::CloseTab
@@ -1737,6 +1738,7 @@ pub fn action_to_events(
         | Action::ScrollTabsLeft
         | Action::ScrollTabsRight
         | Action::SelectTheme
+        | Action::SelectKeybindingMap
         | Action::Revert
         | Action::ToggleAutoRevert
         | Action::OpenTerminal

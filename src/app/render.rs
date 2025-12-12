@@ -48,11 +48,12 @@ impl Editor {
             .prompt
             .as_ref()
             .map_or(false, |p| !p.suggestions.is_empty());
-        let has_file_browser = self
-            .prompt
-            .as_ref()
-            .map_or(false, |p| p.prompt_type == PromptType::OpenFile)
-            && self.file_open_state.is_some();
+        let has_file_browser = self.prompt.as_ref().map_or(false, |p| {
+            matches!(
+                p.prompt_type,
+                PromptType::OpenFile | PromptType::SwitchProject
+            )
+        }) && self.file_open_state.is_some();
 
         // Build main vertical layout: [menu_bar, main_content, status_bar, search_options, prompt_line]
         // Status bar is hidden when suggestions popup is shown
@@ -83,8 +84,8 @@ impl Editor {
         // Split main content area based on file explorer visibility
         // Also keep the layout split if a sync is in progress (to avoid flicker)
         let editor_content_area;
-        let file_explorer_should_show =
-            self.file_explorer_visible && (self.file_explorer.is_some() || self.file_explorer_sync_in_progress);
+        let file_explorer_should_show = self.file_explorer_visible
+            && (self.file_explorer.is_some() || self.file_explorer_sync_in_progress);
 
         if file_explorer_should_show {
             // Split horizontally: [file_explorer | editor]
@@ -349,8 +350,11 @@ impl Editor {
         self.cached_layout.suggestions_area = None;
         self.file_browser_layout = None;
         if let Some(prompt) = &self.prompt {
-            // For OpenFile prompt, render the file browser popup
-            if prompt.prompt_type == PromptType::OpenFile {
+            // For OpenFile/SwitchProject prompt, render the file browser popup
+            if matches!(
+                prompt.prompt_type,
+                PromptType::OpenFile | PromptType::SwitchProject
+            ) {
                 if let Some(file_open_state) = &self.file_open_state {
                     // Calculate popup area: position above prompt line, covering status bar
                     let max_height = main_chunks[prompt_line_idx].y.saturating_sub(1).min(20);
@@ -462,8 +466,12 @@ impl Editor {
 
         // Render prompt line if active
         if let Some(prompt) = &prompt {
-            // Use specialized renderer for file open prompt to show colorized path
-            if prompt.prompt_type == crate::view::prompt::PromptType::OpenFile {
+            // Use specialized renderer for file/folder open prompt to show colorized path
+            if matches!(
+                prompt.prompt_type,
+                crate::view::prompt::PromptType::OpenFile
+                    | crate::view::prompt::PromptType::SwitchProject
+            ) {
                 if let Some(file_open_state) = &self.file_open_state {
                     StatusBarRenderer::render_file_open_prompt(
                         frame,
@@ -598,7 +606,7 @@ impl Editor {
             .get(&self.active_buffer())
             .map(|state| state.view_mode == crate::state::ViewMode::Compose)
             .unwrap_or(false);
-        let file_explorer_exists = self.file_explorer.is_some();
+        let file_explorer_visible = self.file_explorer_visible;
         let file_explorer_focused =
             self.key_context == crate::input::keybindings::KeyContext::FileExplorer;
         let mouse_capture = self.mouse_enabled;
@@ -637,7 +645,7 @@ impl Editor {
             .set(context_keys::LINE_NUMBERS, line_numbers)
             .set(context_keys::LINE_WRAP, line_wrap)
             .set(context_keys::COMPOSE_MODE, compose_mode)
-            .set(context_keys::FILE_EXPLORER, file_explorer_exists)
+            .set(context_keys::FILE_EXPLORER, file_explorer_visible)
             .set(context_keys::FILE_EXPLORER_FOCUSED, file_explorer_focused)
             .set(context_keys::MOUSE_CAPTURE, mouse_capture)
             .set(context_keys::MOUSE_HOVER, mouse_hover)
